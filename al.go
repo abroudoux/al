@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 )
 
-const fileName string = "al.json"
+const configFileName string = "al.json"
 
 func main() {
 	if len(os.Args) > 1 {
@@ -20,7 +22,7 @@ func main() {
 func flagMode() {
 	flag := os.Args[1]
 
-	if flag == "init" || flag == "-i" {
+	if flag == "--init" || flag == "init" || flag == "-i" {
 		initConfigFile()
 	} else if flag == "-v" || flag == "--version" {
 		println("0.0.1")
@@ -34,16 +36,16 @@ func flagMode() {
 }
 
 func printHelpManual() {
-	println("Usage: branch [options]")
+	println("Usage: al [options]")
 	println("Options:")
+	println("al [alias]  			Run alias")
 	println("al [--init | -i]  Initialize config file")
 
 	os.Exit(0)
 }
 
 func fileExists() bool {
-	info, err := os.Stat(fileName)
-
+	info, err := os.Stat(configFileName)
 	if os.IsNotExist(err) {
 		return false
 	}
@@ -58,8 +60,7 @@ func initConfigFile() {
 	}
 
 	println("Initializing al config file...")
-	file, err := os.Create(fileName)
-
+	file, err := os.Create(configFileName)
 	if err != nil {
 		println("Error creating file")
 		os.Exit(1)
@@ -81,29 +82,53 @@ func runAlias() {
 	}
 
 	alias = alias[:len(alias)-1]
-	value := findAliasInConfigFile(alias)
-	println(value)
+	command, err := findAliasInConfigFile(alias)
+	if err != nil {
+		println("Alias not found")
+		os.Exit(1)
+	}
+
+	runCommand(command)
 }
 
-func findAliasInConfigFile(alias string) string {
-	data, err := ioutil.ReadFile(fileName)
-
+func findAliasInConfigFile(alias string) (string, error) {
+	data, err := ioutil.ReadFile(configFileName)
 	if err != nil {
-		fmt.Println("Error reading al.json:", err)
-		os.Exit(1)
+		return "", fmt.Errorf("error reading %s: %w", configFileName, err)
 	}
 
 	var aliases map[string]string
 	err = json.Unmarshal(data, &aliases)
-
 	if err != nil {
-		fmt.Println("Error parsing JSON:", err)
-		os.Exit(1)
+		return "", fmt.Errorf("error parsing JSON in %s: %w", configFileName, err)
 	}
 
 	if value, exists := aliases[alias]; exists {
-		return value
+		return value, nil
 	}
 
-	return "Alias not found"
+    return "", fmt.Errorf("alias '%s' not found in %s", alias, configFileName)
+}
+
+func runCommand(command string) {
+	parts := strings.Fields(command)
+
+	if len(parts) == 0 {
+		fmt.Println("Invalid command")
+		os.Exit(1)
+	}
+
+	cmdName := parts[0]
+	cmdArgs := parts[1:]
+	cmd := exec.Command(cmdName, cmdArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Error executing command: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Command %s executed successfully\n", command)
 }
