@@ -17,6 +17,7 @@ func main() {
 	} 
 
 	println("No flag provided. Use -h or --help for help")
+	os.Exit(0)
 }
 
 func flagMode() {
@@ -72,6 +73,7 @@ func initConfigFile() {
 func runAlias() {
 	if !fileExists() {
 		println("Config file not found. Use al --init to create one")
+		askUserToCreateConfigFile()
 		os.Exit(1)
 	}
 
@@ -131,4 +133,17 @@ func runCommand(command string) {
 	}
 
 	fmt.Printf("Command %s executed successfully\n", command)
+}
+
+func askUserToCreateConfigFile() {
+	println("Would you like to create a config file? (y/n)")
+	var response string
+	fmt.Scanln(&response)
+
+	if response == "y" || response == "Y" || response == "yes" {
+		initConfigFile()
+	} else {
+		println("Exiting...")
+		os.Exit(0)
+	}
 }
