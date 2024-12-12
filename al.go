@@ -14,6 +14,7 @@ const configFileName string = "al.json"
 func main() {
 	if len(os.Args) > 1 {
 		flagMode()
+		os.Exit(0)
 	} 
 
 	println("No flag provided. Use -h or --help for help")
@@ -24,25 +25,28 @@ func flagMode() {
 	flag := os.Args[1]
 
 	if flag == "--init" || flag == "init" || flag == "-i" {
-		initConfigFile()
+		err := initConfigFile()
+		if err != nil {
+			println(err)
+			os.Exit(1)
+		}
 	} else if flag == "-v" || flag == "--version" {
-		println("0.0.1")
+		println("0.0.2")
 	} else if flag == "-h" || flag == "--help" {
 		printHelpManual()
 	} else {
-		runAlias()
+		err := runAlias()
+		if err != nil {
+			println(err)
+			os.Exit(1)
+		}
 	}
-
-	os.Exit(0)
 }
 
 func printHelpManual() {
-	println("Usage: al [options]")
-	println("Options:")
-	println("al [alias]  			Run alias")
-	println("al [--init | -i]  Initialize config file")
-
-	os.Exit(0)
+	fmt.Println("Usage: al [options]")
+	fmt.Printf("  %-20s %s\n", "al [alias]", "Run alias")
+	fmt.Printf("  %-20s %s\n", "al [--init | -i]", "Initialize config file")
 }
 
 func fileExists() bool {
@@ -54,23 +58,22 @@ func fileExists() bool {
 	return !info.IsDir()
 }
 
-func initConfigFile() {
+func initConfigFile() error {
 	if fileExists() {
-		println("File already exists")
-		os.Exit(0)
+		return fmt.Errorf("config file already exists")
 	}
 
 	println("Initializing al config file...")
 	file, err := os.Create(configFileName)
 	if err != nil {
-		println("Error creating file")
-		os.Exit(1)
+		return fmt.Errorf("error creating config file: %w", err)
 	}
 
 	defer file.Close()
+	return nil
 }
 
-func runAlias() {
+func runAlias() error {
 	if !fileExists() {
 		println("Config file not found. Use al --init to create one")
 		askUserToCreateConfigFile()
@@ -86,11 +89,11 @@ func runAlias() {
 	alias = alias[:len(alias)-1]
 	command, err := findAliasInConfigFile(alias)
 	if err != nil {
-		println("Alias not found")
-		os.Exit(1)
+		return fmt.Errorf("error finding alias: %w", err)
 	}
 
 	runCommand(command)
+	return nil
 }
 
 func findAliasInConfigFile(alias string) (string, error) {
@@ -125,7 +128,6 @@ func runCommand(command string) {
 	cmd := exec.Command(cmdName, cmdArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Error executing command: %v\n", err)

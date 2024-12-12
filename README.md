@@ -2,7 +2,7 @@
 
 🎭 Create local aliases, like package.json but everywhere
 
-Version : 0.0.1
+Version : 0.0.2
 
 ## 🚀 Installation
 
